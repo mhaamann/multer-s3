@@ -144,6 +144,35 @@ describe('Multer S3', function () {
     })
   })
 
+  it('uploads file with AWS SSE-C server-side encryption', function (done) {
+    var s3 = mockS3()
+    var form = new FormData()
+    var storage = multerS3({ s3: s3, bucket: 'test', sseCustomerAlgorithm: 'AES256', sseCustomerKey: function (req, file, cb) { cb(null, 'mykey') } })
+    var upload = multer({ storage: storage })
+    var parser = upload.single('image')
+    var image = fs.createReadStream(path.join(__dirname, 'files', 'ffffff.png'))
+
+    form.append('name', 'Multer')
+    form.append('image', image)
+
+    submitForm(parser, form, function (err, req) {
+      assert.ifError(err)
+
+      assert.equal(req.body.name, 'Multer')
+
+      assert.equal(req.file.fieldname, 'image')
+      assert.equal(req.file.originalname, 'ffffff.png')
+      assert.equal(req.file.size, 68)
+      assert.equal(req.file.bucket, 'test')
+      assert.equal(req.file.etag, 'mock-etag')
+      assert.equal(req.file.location, 'mock-location')
+      assert.equal(req.file.sseCustomerAlgorithm, 'AES256')
+      assert.equal(req.file.sseCustomerKey, 'mykey')
+
+      done()
+    })
+  })
+
   it('uploads PNG file with correct content-type', function (done) {
     var s3 = mockS3()
     var form = new FormData()
