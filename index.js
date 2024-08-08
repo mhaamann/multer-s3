@@ -25,6 +25,7 @@ var defaultSSE = staticValue(null)
 var defaultSSEKMS = staticValue(null)
 var defaultSSECustomerAlgorithm = staticValue(null)
 var defaultSSECustomerKey = staticValue(null)
+var defaultSSECustomerKeyMD5 = staticValue(null)
 
 // Regular expression to detect svg file content, inspired by: https://github.com/sindresorhus/is-svg/blob/master/index.js
 // It is not always possible to check for an end tag if a file is very big. The firstChunk, see below, might not be the entire file.
@@ -81,7 +82,8 @@ function collect (storage, req, file, cb) {
     storage.getSSEKMS.bind(storage, req, file),
     storage.getContentEncoding.bind(storage, req, file),
     storage.getSSECustomerAlgorithm.bind(storage, req, file),
-    storage.getSSECustomerKey.bind(storage, req, file)
+    storage.getSSECustomerKey.bind(storage, req, file),
+    storage.getSSECustomerKeyMD5.bind(storage, req, file)
   ], function (err, values) {
     if (err) return cb(err)
 
@@ -101,9 +103,9 @@ function collect (storage, req, file, cb) {
         serverSideEncryption: values[7],
         sseKmsKeyId: values[8],
         contentEncoding: values[9],
-        sseCustomerAlgorithm: values[10],
-        sseCustomerKey: values[11],
-        sseCustomerKeyMD5: values[11] ? crypto.createHash('md5').update(values[11]).digest('base64') : null
+        SSECustomerAlgorithm: values[10],
+        SSECustomerKey: values[11],
+        SSECustomerKeyMD5: values[12]
       })
     })
   })
@@ -189,17 +191,24 @@ function S3Storage (opts) {
     default: throw new TypeError('Expected opts.sseKmsKeyId to be undefined, string, or function')
   }
 
-  switch (typeof opts.sseCustomerAlgorithm) {
-    case 'string': this.getSSECustomerAlgorithm = staticValue(opts.sseCustomerAlgorithm); break
+  switch (typeof opts.SSECustomerAlgorithm) {
+    case 'string': this.getSSECustomerAlgorithm = staticValue(opts.SSECustomerAlgorithm); break
     case 'undefined': this.getSSECustomerAlgorithm = defaultSSECustomerAlgorithm; break
-    default: throw new TypeError('Expected opts.sseCustomerAlgorithm to be undefined or string')
+    default: throw new TypeError('Expected opts.SSECustomerAlgorithm to be undefined or string')
   }
 
-  switch (typeof opts.sseCustomerKey) {
-    case 'function': this.getSSECustomerKey = opts.sseCustomerKey; break
-    case 'string': this.getSSECustomerKey = staticValue(opts.sseCustomerKey); break
+  switch (typeof opts.SSECustomerKey) {
+    case 'function': this.getSSECustomerKey = opts.SSECustomerKey; break
+    case 'string': this.getSSECustomerKey = staticValue(opts.SSECustomerKey); break
     case 'undefined': this.getSSECustomerKey = defaultSSECustomerKey; break
-    default: throw new TypeError('Expected opts.sseCustomerKey to be undefined, string or function')
+    default: throw new TypeError('Expected opts.SSECustomerKey to be undefined, string or function')
+  }
+
+  switch (typeof opts.SSECustomerKeyMD5) {
+    case 'function': this.getSSECustomerKeyMD5 = opts.SSECustomerKeyMD5; break
+    case 'string': this.getSSECustomerKeyMD5 = staticValue(opts.SSECustomerKeyMD5); break
+    case 'undefined': this.getSSECustomerKeyMD5 = defaultSSECustomerKeyMD5; break
+    default: throw new TypeError('Expected opts.SSECustomerKeyMD5 to be undefined, string or function')
   }
 }
 
@@ -220,9 +229,9 @@ S3Storage.prototype._handleFile = function (req, file, cb) {
       ServerSideEncryption: opts.serverSideEncryption,
       SSEKMSKeyId: opts.sseKmsKeyId,
       Body: (opts.replacementStream || file.stream),
-      SSECustomerAlgorithm: opts.sseCustomerAlgorithm,
-      SSECustomerKey: opts.sseCustomerKey,
-      SSECustomerKeyMD5: opts.sseCustomerKeyMD5
+      SSECustomerAlgorithm: opts.SSECustomerAlgorithm,
+      SSECustomerKey: opts.SSECustomerKey,
+      SSECustomerKeyMD5: opts.SSECustomerKeyMD5
     }
 
     if (opts.contentDisposition) {
@@ -259,8 +268,9 @@ S3Storage.prototype._handleFile = function (req, file, cb) {
         location: result.Location,
         etag: result.ETag,
         versionId: result.VersionId,
-        sseCustomerAlgorithm: opts.sseCustomerAlgorithm,
-        sseCustomerKey: opts.sseCustomerKey
+        SSECustomerAlgorithm: opts.SSECustomerAlgorithm,
+        SSECustomerKey: opts.SSECustomerKey,
+        SSECustomerKeyMD5: opts.SSECustomerKeyMD5
       })
     })
   })
