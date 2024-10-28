@@ -49,8 +49,8 @@ function defaultKey (req, file, cb) {
 }
 
 function autoContentType (req, file, cb) {
-  file.stream.once('data', function (firstChunk) {
-    var type = fileType(firstChunk)
+  file.stream.once('data', async function (firstChunk) {
+    const type = await fileType.fromBuffer(firstChunk);
     var mime = 'application/octet-stream' // default type
 
     // Make sure to check xml-extension for svg files.
